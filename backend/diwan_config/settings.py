@@ -3,14 +3,17 @@
 from pathlib import Path
 import os
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# ==> تأكدي من أن BASE_DIR معرف بشكل صحيح باستخدام pathlib <==
+BASE_DIR = Path(__file__).resolve().parent.parent 
 
-# !!! مهم: إذا كان لديك مفتاح سري تم إنشاؤه تلقائيًا، استخدمه بدلاً من هذا !!!
-SECRET_KEY = "django-insecure-YOUR_SECRET_KEY_HERE"  # استخدم المفتاح الأصلي إن وجد
+# !!! مهم: استخدمي المفتاح السري الأصلي إذا كان لديكِ !!!
+SECRET_KEY = "django-insecure-YOUR_SECRET_KEY_HERE" # <-- استبدليه بالمفتاح الأصلي
 
 DEBUG = True
 
-ALLOWED_HOSTS = []
+# ==> هام لـ Gitpod: إضافة Host الخاص بـ Gitpod <==
+# يمكنكِ استخدام '*' للتسهيل في بيئة التطوير، أو الحصول على الـ URL الديناميكي
+ALLOWED_HOSTS = ['*'] # السماح بكل الـ Hosts (آمن في Gitpod غالباً)
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -54,18 +57,19 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "diwan_config.wsgi.application"
 
-# --- قسم قاعدة البيانات ---
+# --- قسم قاعدة البيانات (معدل لـ Gitpod) ---
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": "diwan_db",  # اسم قاعدة البيانات (يجب أن يكون تم إنشاؤه)
-        "USER": "diwan_user",  # اسم المستخدم (يجب أن يكون تم إنشاؤه)
-        "PASSWORD": "omershary+@123",  # <<< === تم التغيير هنا ===
-        "HOST": "localhost",  # عادةً يبقى كما هو
-        "PORT": "5432",  # المنفذ الافتراضي
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'diwan_db_gitpod',  # <-- اسم قاعدة بيانات جديد لـ Gitpod
+        'USER': 'gitpod',          # <-- مستخدم PostgreSQL الافتراضي في Gitpod
+        'PASSWORD': '',             # <-- كلمة المرور (عادة فارغة للمستخدم gitpod)
+        'HOST': 'localhost',       # <-- سيتم تشغيله داخل Gitpod بواسطة الخدمة
+        'PORT': '5432',            # <-- المنفذ الافتراضي لـ PostgreSQL
     }
 }
 # --- نهاية قسم قاعدة البيانات ---
+
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -89,22 +93,25 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
-# backend/diwan_config/settings.py
-# ... (كل الإعدادات الأخرى فوق هذا) ...
 
-# --- إعدادات Django REST Framework ---
+# --- إعدادات Django REST Framework (كما هي) ---
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        # يسمح بالمصادقة عبر الجلسات (لواجهة DRF والمتصفح)
         "rest_framework.authentication.SessionAuthentication",
-        # يسمح بالمصادقة عبر التوكن (لتطبيق الموبايل والـ APIs الخارجية)
         "rest_framework.authentication.TokenAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
-        # الصلاحية الافتراضية (يمكن تجاوزها في الـ Views)
-        # سنتركها IsAuthenticatedOrReadOnly مبدئيًا كافتراضي عام
         "rest_framework.permissions.IsAuthenticatedOrReadOnly",
     ],
-    # يمكنك إضافة إعدادات أخرى لـ DRF هنا (مثل pagination, throttling)
 }
 # --- نهاية إعدادات DRF ---
+
+# ==> هام لـ Gitpod: إضافة إعدادات CORS إذا لزم الأمر <==
+# إذا واجهتِ مشاكل CORS عند الاتصال من تطبيق Flutter، قد تحتاجين لإضافة:
+# INSTALLED_APPS += ['corsheaders']
+# MIDDLEWARE += ['corsheaders.middleware.CorsMiddleware']
+# CORS_ALLOWED_ORIGINS = [
+#    "https://YOUR_FLUTTER_APP_URL_FROM_GITPOD", # الـ URL الذي يعمل عليه تطبيق Flutter
+# ]
+# أو للتسهيل في التطوير (أقل أماناً):
+# CORS_ALLOW_ALL_ORIGINS = True 
