@@ -1,71 +1,53 @@
-# .gitpod.yml - تكوين بيئة Gitpod
+# .gitpod.yml - Simplified and Corrected
 
 tasks:
-  - name: Setup Backend & Run Django
-    before: |
-      # تثبيت متطلبات الباك إند
-      cd backend
-      pip install -r requirements.txt
-      cd ..
-      # تثبيت أدوات Flutter (إذا لم يكن مثبتاً تلقائياً)
-      # (يمكن إزالة هذا الجزء إذا كان Flutter يعمل دائماً)
-      if ! command -v flutter &> /dev/null; then
-        echo "Installing Flutter..."
-        wget -q https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_3.22.2-stable.tar.xz -O /tmp/flutter.tar.xz
-        tar xf /tmp/flutter.tar.xz -C /workspace
-        rm /tmp/flutter.tar.xz
-        # لا نحتاج لتحديد PATH هنا لأن .gitpod.yml يتعامل معه غالباً
-      fi
-    init: |
-      # انتظار قاعدة البيانات لتكون جاهزة وتطبيق الهجرات
-      echo "Waiting for PostgreSQL..."
-      gp await-port 5432 # انتظار منفذ PostgreSQL
-      echo "PostgreSQL is ready. Running migrations..."
-      cd backend
-      python manage.py migrate
-      echo "Backend setup complete."
-      cd ..
-    command: |
-      # تشغيل سيرفر Django
-      echo "Starting Django development server..."
-      cd backend
-      python manage.py runserver 0.0.0.0:8000
+  - name: Backend Setup & Run
+    before:
+      - cd backend
+      - pip install -r requirements.txt
+    init:
+      - gp await-port 5432 # Wait for DB
+      - cd backend
+      - python manage.py migrate
+    command:
+      - cd backend
+      - python manage.py runserver 0.0.0.0:8000
 
-  - name: Setup Flutter
-    init: |
-      # جلب حزم Flutter
-      echo "Getting Flutter packages..."
-      cd mobile_app
-      flutter pub get
-      echo "Flutter setup complete."
-      cd ..
-    command: |
-      # إبقاء الطرفية مفتوحة لتشغيل أوامر Flutter
-      echo "Flutter environment ready. Use 'flutter run' in mobile_app directory."
-      cd mobile_app
+  - name: Flutter Setup
+    before:
+      # Install Flutter SDK
+      - |
+        if ! command -v flutter &> /dev/null; then
+          FLUTTER_VERSION="3.22.2" 
+          wget -q "https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_${FLUTTER_VERSION}-stable.tar.xz" -O /tmp/flutter.tar.xz
+          tar xf /tmp/flutter.tar.xz -C "$GITPOD_REPO_ROOT" 
+          rm /tmp/flutter.tar.xz
+          export PATH="$GITPOD_REPO_ROOT/flutter/bin:$PATH"
+        fi
+    init:
+      - cd mobile_app
+      # Ensure Flutter PATH is set
+      - export PATH="$GITPOD_REPO_ROOT/flutter/bin:$PATH" 
+      - flutter pub get
+    command:
+      - cd mobile_app
 
-# تحديد الخدمات التي يجب تشغيلها (قاعدة البيانات)
 services:
   - name: postgres
-    image: postgres:13 # يمكن استخدام إصدار أحدث إذا أردت
+    image: postgres:13
     env:
-      POSTGRES_DB: diwan_db_gitpod # يجب أن يطابق الاسم في settings.py
-      POSTGRES_USER: gitpod       # يجب أن يطابق المستخدم في settings.py
-      # POSTGRES_PASSWORD: '' # كلمة المرور فارغة افتراضياً للمستخدم gitpod
+      POSTGRES_DB: diwan_db_gitpod
+      POSTGRES_USER: gitpod
 
-# تحديد المنافذ التي يجب فتحها تلقائياً
 ports:
-  - port: 8000 # منفذ Django API
-    onOpen: open-preview # فتح نافذة لمعاينة الـ API (اختياري)
-  - port: 5432 # منفذ PostgreSQL (للاتصال الداخلي)
+  - port: 8000 # Django API
+    onOpen: open-preview
+  - port: 5432 # PostgreSQL
     onOpen: ignore
-  - port: 5900 # VNC (إذا تم تثبيت أدوات UI)
-    onOpen: ignore
-  - port: 6080 # Web VNC (إذا تم تثبيت أدوات UI)
+  - port: 9000-9099 # Flutter Dev Ports
     onOpen: ignore
 
-# يمكن إضافة إعدادات VS Code هنا (اختياري)
-# vscode:
-#   extensions:
-#     - Dart-Code.flutter
-#     - ms-python.python
+vscode:
+  extensions:
+    - Dart-Code.flutter
+    - ms-python.python
