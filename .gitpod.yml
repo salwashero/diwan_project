@@ -1,53 +1,77 @@
-# .gitpod.yml - Simplified and Corrected
+# .gitpod.yml - Corrected Full Configuration
 
 tasks:
   - name: Backend Setup & Run
     before:
+      - echo "Installing backend requirements..."
       - cd backend
       - pip install -r requirements.txt
+      - cd .. # Return to root
     init:
-      - gp await-port 5432 # Wait for DB
+      - echo "Waiting for PostgreSQL..."
+      - gp await-port 5432 # Wait for PostgreSQL service
+      - sleep 5            # Add extra wait time for DB initialization
+      - echo "PostgreSQL port awaited. Running migrations..."
       - cd backend
       - python manage.py migrate
+      - echo "Backend setup complete."
+      - cd .. # Return to root
     command:
+      - echo "Starting Django development server..."
       - cd backend
       - python manage.py runserver 0.0.0.0:8000
 
   - name: Flutter Setup
     before:
-      # Install Flutter SDK
+      # Install Flutter SDK if not found
       - |
         if ! command -v flutter &> /dev/null; then
-          FLUTTER_VERSION="3.22.2" 
+          echo "Installing Flutter SDK..."
+          FLUTTER_VERSION="3.22.2" # Or specify desired version
           wget -q "https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_${FLUTTER_VERSION}-stable.tar.xz" -O /tmp/flutter.tar.xz
-          tar xf /tmp/flutter.tar.xz -C "$GITPOD_REPO_ROOT" 
+          tar xf /tmp/flutter.tar.xz -C "$GITPOD_REPO_ROOT" # Extract to workspace root
           rm /tmp/flutter.tar.xz
-          export PATH="$GITPOD_REPO_ROOT/flutter/bin:$PATH"
+        else
+          echo "Flutter SDK already found."
         fi
+        # Always export PATH for this task's scope
+        export PATH="$GITPOD_REPO_ROOT/flutter/bin:$PATH"
     init:
+      - echo "Getting Flutter packages..."
       - cd mobile_app
-      # Ensure Flutter PATH is set
+      # Ensure Flutter PATH is set before running pub get
       - export PATH="$GITPOD_REPO_ROOT/flutter/bin:$PATH" 
       - flutter pub get
+      - echo "Flutter setup complete."
+      - cd .. # Return to root
     command:
+      # Keep this terminal open for Flutter commands
+      - echo "Flutter environment ready. Use 'flutter run' in mobile_app directory."
       - cd mobile_app
 
+# Define services needed
 services:
   - name: postgres
-    image: postgres:13
+    image: postgres:13 # Using PostgreSQL version 13
     env:
       POSTGRES_DB: diwan_db_gitpod
       POSTGRES_USER: gitpod
+      # Default password for user gitpod is empty
 
+# Define ports to expose
 ports:
   - port: 8000 # Django API
     onOpen: open-preview
-  - port: 5432 # PostgreSQL
+    name: Django API
+    description: Backend API server
+  - port: 5432 # PostgreSQL (internal access)
     onOpen: ignore
   - port: 9000-9099 # Flutter Dev Ports
-    onOpen: ignore
+    onOpen: ignore 
 
+# Optional: VS Code specific settings
 vscode:
   extensions:
     - Dart-Code.flutter
     - ms-python.python
+    -VisualStudioExptTeam.vscodeintellicode
