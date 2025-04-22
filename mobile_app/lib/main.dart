@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'services/api_service.dart'; // تأكد من وجود هذا الملف
+import 'models/poem.dart';      // تأكد من وجود هذا الملف
 
 void main() {
   runApp(const MyApp());
@@ -7,119 +9,123 @@ void main() {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'ديوان الشاعر الرقمي',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
+        primarySwatch: Colors.indigo, // اختر لوناً يناسبك
+        visualDensity: VisualDensity.adaptivePlatformDensity,
+        fontFamily: 'Tajawal', // مثال لاستخدام خط عربي إذا أضفته
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      debugShowCheckedModeBanner: false, // لإخفاء شريط Debug
+      home: const HomePage(),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
+class HomePage extends StatefulWidget {
+  const HomePage({super.key});
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  _HomePageState createState() => _HomePageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+class _HomePageState extends State<HomePage> {
+  late Future<List<Poem>> futurePoems;
 
-  void _incrementCounter() {
+  @override
+  void initState() {
+    super.initState();
+    // استدعاء جلب القصائد عند بدء تشغيل الصفحة
+    futurePoems = ApiService.fetchPoems();
+  }
+
+  // دالة لتحديث القائمة (يمكن استدعاؤها بعد إضافة/حذف)
+  void _refreshPoems() {
     setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
+      futurePoems = ApiService.fetchPoems();
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     return Scaffold(
       appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
+        title: const Text('القصائد'),
+        actions: [
+          // زر للتحديث اليدوي
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _refreshPoems,
+            tooltip: 'تحديث القائمة',
+          ),
+        ],
       ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text(
-              'You have pushed the button this many times:',
-            ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-          ],
-        ),
+      body: FutureBuilder<List<Poem>>(
+        future: futurePoems,
+        builder: (context, snapshot) {
+          // حالة الانتظار
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          // حالة الخطأ
+          else if (snapshot.hasError) {
+            print("Error in FutureBuilder: ${snapshot.error}");
+            print("Stack trace: ${snapshot.stackTrace}");
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Text(
+                  'حدث خطأ أثناء تحميل القصائد:\n${snapshot.error}',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.red),
+                ),
+              ),
+            );
+          }
+          // حالة وجود بيانات
+          else if (snapshot.hasData) {
+            final poems = snapshot.data!;
+            // التحقق إذا كانت القائمة فارغة
+            if (poems.isEmpty) {
+              return const Center(child: Text('لا توجد قصائد لعرضها حالياً.'));
+            }
+            // عرض القائمة
+            return ListView.builder(
+              itemCount: poems.length,
+              itemBuilder: (context, index) {
+                final poem = poems[index];
+                return ListTile(
+                  title: Text(poem.title),
+                  subtitle: Text(
+                    poem.body.length > 100 ? '${poem.body.substring(0, 100)}...' : poem.body,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  // يمكن إضافة onTap للانتقال لصفحة التفاصيل لاحقاً
+                  onTap: () {
+                    // Navigator.push(context, MaterialPageRoute(builder: (context) => PoemDetailPage(poem: poem)));
+                    print('Selected poem: ${poem.title}'); // مؤقتًا
+                  },
+                );
+              },
+            );
+          }
+          // حالة غير متوقعة (لا يجب أن تحدث عادةً)
+          else {
+            return const Center(child: Text('حالة غير معروفة.'));
+          }
+        },
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
+      // سنضيف زر الإضافة لاحقاً
+      // floatingActionButton: FloatingActionButton(
+      //   onPressed: () {
+      //     // الانتقال لصفحة إضافة قصيدة
+      //   },
+      //   child: const Icon(Icons.add),
+      //   tooltip: 'إضافة قصيدة جديدة',
+      // ),
     );
   }
 }
